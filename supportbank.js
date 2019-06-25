@@ -44,6 +44,6 @@ if (command[0] === 'List' && command[1] === 'All') {
     let person = accountlist.find((account) => {
         return account.name === command[1];
     });
-    
+
     console.log(command[1] + ' is copied to ' + command[2] + '.');
 }
