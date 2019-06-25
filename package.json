@@ -4,6 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
+    "start": "node supportbank.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
@@ -15,5 +16,12 @@
   "bugs": {
     "url": "https://github.com/WenFan-SW/SupportBank/issues"
   },
-  "homepage": "https://github.com/WenFan-SW/SupportBank#readme"
+  "homepage": "https://github.com/WenFan-SW/SupportBank#readme",
+  "dependencies": {
+    "csv": "^5.1.1",
+    "csv-parser": "^2.3.0",
+    "jquery": "^3.4.1",
+    "jquery-csv": "^1.0.3",
+    "papaparse": "^5.0.0"
+  }
 }
