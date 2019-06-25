@@ -1,38 +1,49 @@
-// const fs = require('fs');
-// const csv = require('csv-parser');
-// const fileUrl = new URL('file:///C:/Work/Training/SupportBank/Transactions2014.csv');
-//
-// fs.createReadStream(fileUrl)
-//     .pipe(csv())
-//     .on('data', function(data){
-//         try {
-//             let data = fs.readFileSync(fileUrl, 'utf8');
-//             console.log(data);
-//         } catch(e) {
-//             console.log('Error:', e.stack);
-//         }
-//     })
-//     .on('end',function(){
-//         //some final operation
-//     });
-
 const fs = require('fs')
 const Papa = require('papaparse');
-// var $ = jQuery = require('jquery');
-// require('./jquery.csv.js');
-// const csv = require('/.jquery.csv.js');
 const fileUrl = new URL('file:///C:/Work/Training/SupportBank/Transactions2014.csv');
-
+const readlineSync = require('readline-sync');
 
 let data = fs.readFileSync(fileUrl, 'utf8');
-// console.log(data);
-let result = Papa.parse(data, {header: true});
-console.log(result.data);
-
-let accounts 
+let transfers = Papa.parse(data, {header: true}).data;
+let names = Array.from(new Set(transfers.map(a => a.From).concat(transfers.map(a => a.To))));
 
 
-// let result = $.csv.toObjects(data);
-// console.log(data);
+class accounts{
+    constructor(name, balance) {
+        this.name = name;
+        this.balance = balance;
+    }
+}
+
+let accountlist = [];
+for (let val of names) {
+    accountlist.push(new accounts(val, 0));
+}
+
+// function completeTransfer(from, to, amount) {
+//
+//
+// }
 
 
+for (let transfer of transfers) {
+    let fromPerson = accountlist.find((account) => {
+        return account.name === transfer.From;
+    });
+    fromPerson.balance += - parseFloat(transfer.Amount);
+    let toPerson = accountlist.find((account) => {
+        return account.name === transfer.To;
+    });
+    toPerson.balance += parseFloat(transfer.Amount);
+}
+
+let command = readlineSync.promptCL();
+if (command[0] === 'List' && command[1] === 'All') {
+    console.log(accountlist);
+} else if (command[0] === 'List') {
+    let person = accountlist.find((account) => {
+        return account.name === command[1];
+    });
+    
+    console.log(command[1] + ' is copied to ' + command[2] + '.');
+}
