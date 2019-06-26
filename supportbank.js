@@ -1,7 +1,7 @@
 const fs = require('fs')
 const Papa = require('papaparse');
 const fileUrl = new URL('file:///C:/Work/Training/SupportBank/Transactions2014.csv');
-const readlineSync = require('readline-sync');
+const readline = require('readline-sync');
 
 let data = fs.readFileSync(fileUrl, 'utf8');
 let transfers = Papa.parse(data, {header: true}).data;
@@ -20,12 +20,6 @@ for (let val of names) {
     accountlist.push(new accounts(val, 0));
 }
 
-// function completeTransfer(from, to, amount) {
-//
-//
-// }
-
-
 for (let transfer of transfers) {
     let fromPerson = accountlist.find((account) => {
         return account.name === transfer.From;
@@ -37,13 +31,26 @@ for (let transfer of transfers) {
     toPerson.balance += parseFloat(transfer.Amount);
 }
 
-let command = readlineSync.promptCL();
-if (command[0] === 'List' && command[1] === 'All') {
-    console.log(accountlist);
-} else if (command[0] === 'List') {
-    let person = accountlist.find((account) => {
-        return account.name === command[1];
-    });
+let command = readline.prompt();
 
-    console.log(command[1] + ' is copied to ' + command[2] + '.');
+if (command === 'List All') {
+    console.log(accountlist);
+} else if (command.substr(0,4) === 'List') {
+    let personTrans = getTransfers(command);
+    console.log(personTrans);
+
+}
+
+
+
+
+function getTransfers() {
+    let person = command.substr(5);
+    let personTrans = [];
+    for (let transfer of transfers) {
+        if (transfer.From === person || transfer.To === person) {
+            personTrans.push(transfer);
+        }
+    }
+    return personTrans;
 }
