@@ -1,7 +1,9 @@
 const fs = require('fs');
 const Papa = require('papaparse');
 // const fileUrl = new URL('file:///C:/Work/Training/SupportBank/Transactions2014.csv');
-const fileUrl = new URL ('file:///C:/Work/Training/SupportBank/DodgyTransactions2015.csv');
+// const fileUrl = new URL ('file:///C:/Work/Training/SupportBank/DodgyTransactions2015.csv');
+const fileUrl = new URL ('file:///C:/Work/Training/SupportBank/Transactions2013.json');
+const fileExtension = String(fileUrl).replace(/^.*\./, '');
 const readline = require('readline-sync');
 const moment = require('moment');
 const log4js = require('log4js');
@@ -37,7 +39,7 @@ class Transaction {
     }
 }
 
-var logger = log4js.getLogger();
+let logger = log4js.getLogger();
 
 while (true) {
     main();
@@ -46,33 +48,53 @@ while (true) {
 function main() {
     let [transactions, names]= formatFile(fileUrl);
     let accountList = getAccounts(names);
-
     processTransfers(transactions, accountList);
     processUserCommand(accountList, transactions);
 }
 
 function formatFile() {
     let data = fs.readFileSync(fileUrl, {encoding: 'utf8'});
-    let transfers = Papa.parse(data, {header: true}).data;
+    let transfers = parser(data);
     parseDates(transfers);
+
     let transactions = getTransactions(transfers);
     let names = getNamesOfAllAccounts(transactions);
     return [transactions, names];
 }
 
+function parser(data) {
+    if (fileExtension === 'csv') {
+        return Papa.parse(data, {header: true}).data;
+    } else if (fileExtension === 'json') {
+        return JSON.parse(data);
+    }
+}
+
 function parseDates(transfers) {
     for (let transfer of transfers) {
-        let maybeDate = moment(transfer.Date, 'DD/MM/YYYY');
-        if (!maybeDate.isValid()) {
-            logger.error('Date is in an incorrect format');
-            transfer.Date = null;
+        if (fileExtension === 'csv') {
+            let maybeDate = moment(transfer.Date, 'DD/MM/YYYY');
+            if (!maybeDate.isValid()) {
+                logger.error('Date is in an incorrect format');
+                transfer.Date = null;
+            }
+        } else if (fileExtension === 'json') {
+            transfer.Date = moment(transfer.Date).format('DD/MM/YYYY');
+            // let maybeDate = transfer.Date;
+            // if (!maybeDate.isValid()) {
+            //     logger.error('Date is in an incorrect format');
+            //     transfer.Date = null;
+            // }
         }
+
     }
 }
 
 function getNamesOfAllAccounts(transactions) {
     return Array.from(new Set(transactions.map(a => a.from).concat(transactions.map(a => a.to))));
 }
+
+
 
 function getAccounts(names) {
     return names.map((name) => {
@@ -82,7 +104,11 @@ function getAccounts(names) {
 
 function getTransactions(transfers) {
     return transfers.map((transfer) => {
-        return new Transaction(transfer.Date, transfer.From, transfer.To, transfer.Narrative, transfer.Amount);
+        if (fileExtension === 'csv') {
+            return new Transaction(transfer.Date, transfer.From, transfer.To, transfer.Narrative, transfer.Amount);
+        } else if (fileExtension === 'json') {
+            return new Transaction(transfer.Date, transfer.FromAccount, transfer.ToAccount, transfer.Narrative, transfer.Amount);
+        }
     });
 }
 
@@ -120,6 +146,3 @@ function processUserCommand(accountList, transactions) {
         console.log(personTrans);
     }
 }
-
-
-
