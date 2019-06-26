@@ -1,56 +1,125 @@
-const fs = require('fs')
+const fs = require('fs');
 const Papa = require('papaparse');
-const fileUrl = new URL('file:///C:/Work/Training/SupportBank/Transactions2014.csv');
+// const fileUrl = new URL('file:///C:/Work/Training/SupportBank/Transactions2014.csv');
+const fileUrl = new URL ('file:///C:/Work/Training/SupportBank/DodgyTransactions2015.csv');
 const readline = require('readline-sync');
+const moment = require('moment');
+const log4js = require('log4js');
 
-let data = fs.readFileSync(fileUrl, 'utf8');
-let transfers = Papa.parse(data, {header: true}).data;
-let names = Array.from(new Set(transfers.map(a => a.From).concat(transfers.map(a => a.To))));
+log4js.configure({
+    appenders: {
+        file: { type: 'fileSync', filename: 'logs/debug.log' }
+    },
+    categories: {
+        default: { appenders: ['file'], level: 'debug'}
+    }
+});
 
-
-class accounts{
+class Account {
     constructor(name, balance) {
         this.name = name;
         this.balance = balance;
     }
+
+    transaction(to, amount) {
+        this.balance = this.balance - amount;
+        to.balance = to.balance + amount;
+    }
 }
 
-let accountlist = [];
-for (let val of names) {
-    accountlist.push(new accounts(val, 0));
+class Transaction {
+    constructor(date, from, to, narrative, amount) {
+        this.date = date;
+        this.from = from;
+        this.to = to;
+        this.narrative = narrative;
+        this.amount = amount;
+    }
 }
 
-for (let transfer of transfers) {
-    let fromPerson = accountlist.find((account) => {
-        return account.name === transfer.From;
-    });
-    fromPerson.balance += - parseFloat(transfer.Amount);
-    let toPerson = accountlist.find((account) => {
-        return account.name === transfer.To;
-    });
-    toPerson.balance += parseFloat(transfer.Amount);
+var logger = log4js.getLogger();
+
+while (true) {
+    main();
 }
 
-let command = readline.prompt();
+function main() {
+    let [transactions, names]= formatFile(fileUrl);
+    let accountList = getAccounts(names);
 
-if (command === 'List All') {
-    console.log(accountlist);
-} else if (command.substr(0,4) === 'List') {
-    let personTrans = getTransfers(command);
-    console.log(personTrans);
-
+    processTransfers(transactions, accountList);
+    processUserCommand(accountList, transactions);
 }
 
+function formatFile() {
+    let data = fs.readFileSync(fileUrl, {encoding: 'utf8'});
+    let transfers = Papa.parse(data, {header: true}).data;
+    parseDates(transfers);
+    let transactions = getTransactions(transfers);
+    let names = getNamesOfAllAccounts(transactions);
+    return [transactions, names];
+}
 
-
-
-function getTransfers() {
-    let person = command.substr(5);
-    let personTrans = [];
+function parseDates(transfers) {
     for (let transfer of transfers) {
-        if (transfer.From === person || transfer.To === person) {
-            personTrans.push(transfer);
+        let maybeDate = moment(transfer.Date, 'DD/MM/YYYY');
+        if (!maybeDate.isValid()) {
+            logger.error('Date is in an incorrect format');
+            transfer.Date = null;
         }
     }
-    return personTrans;
 }
+
+function getNamesOfAllAccounts(transactions) {
+    return Array.from(new Set(transactions.map(a => a.from).concat(transactions.map(a => a.to))));
+}
+
+function getAccounts(names) {
+    return names.map((name) => {
+        return new Account(name, 0);
+    });
+}
+
+function getTransactions(transfers) {
+    return transfers.map((transfer) => {
+        return new Transaction(transfer.Date, transfer.From, transfer.To, transfer.Narrative, transfer.Amount);
+    });
+}
+
+function processTransfers(transactions, accountList) {
+    transactions.forEach((transaction) => {
+        let fromPerson = accountList.find((account) => {
+            return account.name === transaction.from;
+        });
+        let toPerson = accountList.find((account) => {
+            return account.name === transaction.to;
+        });
+
+        if (!isNaN(transaction.amount)) {
+            fromPerson.transaction(toPerson, parseFloat(transaction.amount));
+        } else {
+            logger.debug('transfer amount is not a number');
+        }
+    });
+}
+
+function getTransfersForPerson(person, transactions) {
+    return transactions.filter((transaction) => {
+        return transaction.from === person || transaction.to === person;
+    });
+}
+
+function processUserCommand(accountList, transactions) {
+    console.log('What would you like to know?');
+    let command = readline.prompt();
+    if (command === 'List All') {
+        console.log(accountList);
+    } else if (command.substr(0, 4) === 'List') {
+        let person = command.substr(5);
+        let personTrans = getTransfersForPerson(person, transactions);
+        console.log(personTrans);
+    }
+}
+
+
+
